@@ -1,0 +1,40 @@
+version: "3.9"
+
+services:
+
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    container_name: homeassistant
+    restart: unless-stopped
+    ports:
+      - "8123:8123"
+    volumes:
+      - ./home-assistant/config:/config
+
+  vllm:
+    image: vllm/vllm-openai:latest
+    container_name: vllm
+    ports:
+      - "8000:8000"
+    environment:
+      HF_TOKEN: ${HF_TOKEN}
+    command: >
+      mistralai/Mistral-7B-Instruct
+      --host 0.0.0.0
+      --port 8000
+      --max-model-len 2048
+
+  mcp:
+    image: python:3.11-slim
+    container_name: mcp
+    working_dir: /app
+    volumes:
+      - ./mcp:/app
+    environment:
+      - HA_URL=http://homeassistant:8123
+      - HA_TOKEN=${HA_TOKEN}
+    ports:
+      - "8090:8090"
+    command: bash -lc "pip install fastmcp requests && python server.py"
+    depends_on:
+      - homeassistant
