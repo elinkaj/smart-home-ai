@@ -8,7 +8,7 @@ HA_URL = os.getenv("HA_URL")
 HA_TOKEN = os.getenv("HA_TOKEN")
 API_KEY = os.getenv("MCP_API_KEY")
 
-# Whitelist: only these entities can be queried
+
 ALLOWED_ENTITIES = {
     "sensor.living_room_temperature",
     "sensor.outdoor_temperature",
@@ -63,5 +63,4 @@ def get_multiple(entities: list, api_key: str) -> dict:
 
 
 if __name__ == "__main__":
-    # Bind to localhost only — Docker internal network handles routing
     mcp.run(host="127.0.0.1", port=8090, path="/mcp")
