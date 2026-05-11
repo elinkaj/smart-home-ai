@@ -1,21 +1,26 @@
 version: "3.9"
 
-services:
+networks:
+  internal:
+    driver: bridge
 
+services:
   homeassistant:
     image: ghcr.io/home-assistant/home-assistant:stable
     container_name: homeassistant
     restart: unless-stopped
-    ports:
-      - "8123:8123"
+    expose:
+      - "8123"
     volumes:
       - ./home-assistant/config:/config
+    networks:
+      - internal
 
   vllm:
-    image: vllm/vllm-openai:latest
+    image: vllm/vllm-openai:v0.4.2
     container_name: vllm
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
     environment:
       HF_TOKEN: ${HF_TOKEN}
     command: >
@@ -23,18 +28,39 @@ services:
       --host 0.0.0.0
       --port 8000
       --max-model-len 2048
+    deploy:
+      resources:
+        limits:
+          memory: 16G
+    networks:
+      - internal
 
   mcp:
-    image: python:3.11-slim
+    build:
+      context: ./mcp
+      dockerfile: Dockerfile
     container_name: mcp
     working_dir: /app
-    volumes:
-      - ./mcp:/app
     environment:
       - HA_URL=http://homeassistant:8123
       - HA_TOKEN=${HA_TOKEN}
-    ports:
-      - "8090:8090"
-    command: bash -lc "pip install fastmcp requests && python server.py"
+      - MCP_API_KEY=${MCP_API_KEY}
+    expose:
+      - "8090"
+    networks:
+      - internal
     depends_on:
       - homeassistant
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: client
+    environment:
+      - MCP_API_KEY=${MCP_API_KEY}
+    networks:
+      - internal
+    depends_on:
+      - mcp
+      - vllm
