@@ -63,4 +63,4 @@ def get_multiple(entities: list, api_key: str) -> dict:
 
 
 if __name__ == "__main__":
-    mcp.run(host="127.0.0.1", port=8090, path="/mcp")
+    mcp.run(host="0.0.0.0", port=8090, path="/mcp")
