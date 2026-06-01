@@ -4,9 +4,9 @@ import json
 import os
 from fastmcp import Client
 
-MCP_URL = "http://localhost:8090/mcp"
-VLLM_URL = "http://localhost:8000/v1/chat/completions"
-MODEL = "mistralai/Mistral-7B-Instruct"
+MCP_URL = "http://mcp:8090/mcp"      
+VLLM_URL = "http://vllm:8000/v1/chat/completions" 
+MODEL = "mistralai/Mistral-7B-Instruct-v0.3" 
 MCP_API_KEY = os.getenv("MCP_API_KEY")
 
 MAX_INPUT_LENGTH = 200
