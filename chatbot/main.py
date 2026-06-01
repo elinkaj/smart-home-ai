@@ -29,15 +29,13 @@ def is_allowed_query(query: str) -> bool:
 async def fetch_data(query: str) -> dict:
     async with Client(MCP_URL) as client:
         if "temperature" in query.lower():
-            return await client.call_tool(
-                "get_entity",
-                {"entity_id": "sensor.living_room_temperature", "api_key": MCP_API_KEY},
-            )
+            r = await client.call_tool("get_entity",
+                {"entity_id": "sensor.living_room_temperature", "api_key": MCP_API_KEY})
+            return getattr(r, "data", r)
         if "light" in query.lower():
-            return await client.call_tool(
-                "get_entity",
-                {"entity_id": "light.living_room", "api_key": MCP_API_KEY},
-            )
+            r = await client.call_tool("get_entity",
+                {"entity_id": "light.living_room", "api_key": MCP_API_KEY})
+            return getattr(r, "data", r)
         return {}
 
 
