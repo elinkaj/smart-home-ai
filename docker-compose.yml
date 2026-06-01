@@ -1,4 +1,7 @@
-version: "3.9"
+# Smart Home AI stack.
+# Run with:  docker compose up --build
+
+name: smart-home-ai
 
 networks:
   internal:
@@ -15,23 +18,39 @@ services:
       - ./home-assistant/config:/config
     networks:
       - internal
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8123/manifest.json"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
 
   vllm:
     image: vllm/vllm-openai:v0.4.2
     container_name: vllm
+    restart: unless-stopped
     expose:
       - "8000"
     environment:
-      HF_TOKEN: ${HF_TOKEN}
+      HF_TOKEN: ${HF_TOKEN:?HF_TOKEN is required}
     command: >
-      mistralai/Mistral-7B-Instruct
+      --model mistralai/Mistral-7B-Instruct-v0.3
       --host 0.0.0.0
       --port 8000
       --max-model-len 2048
     deploy:
       resources:
-        limits:
-          memory: 16G
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
+      interval: 20s
+      timeout: 5s
+      retries: 30
+      start_period: 300s
     networks:
       - internal
 
@@ -40,27 +59,36 @@ services:
       context: ./mcp
       dockerfile: Dockerfile
     container_name: mcp
+    restart: unless-stopped
     working_dir: /app
     environment:
       - HA_URL=http://homeassistant:8123
-      - HA_TOKEN=${HA_TOKEN}
-      - MCP_API_KEY=${MCP_API_KEY}
+      - HA_TOKEN=${HA_TOKEN:?HA_TOKEN is required}
+      - MCP_API_KEY=${MCP_API_KEY:?MCP_API_KEY is required}
     expose:
       - "8090"
     networks:
       - internal
     depends_on:
-      - homeassistant
+      homeassistant:
+        condition: service_healthy
 
   client:
     build:
       context: ./client
       dockerfile: Dockerfile
     container_name: client
+    restart: "no"
+    stdin_open: true 
+    tty: true
     environment:
-      - MCP_API_KEY=${MCP_API_KEY}
+      - MCP_URL=http://mcp:8090/mcp
+      - VLLM_URL=http://vllm:8000/v1/chat/completions
+      - MCP_API_KEY=${MCP_API_KEY:?MCP_API_KEY is required}
     networks:
       - internal
     depends_on:
-      - mcp
-      - vllm
+      mcp:
+        condition: service_started
+      vllm:
+        condition: service_healthy
